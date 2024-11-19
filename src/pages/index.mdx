@@ -1,0 +1,274 @@
+---
+layout: ../layouts/Layout.astro
+title: "Soft Bilinear Inverted Pendulum: a Model to Enable Locomotion with Soft Contacts"
+description: 'Webpage of the paper "Soft Bilinear Inverted Pendulum: a Model to Enable Locomotion with Soft Contacts" published in IEEE Transactions on Systems, Man, and Cybernetics: Systems.'
+favicon: favicon.svg
+thumbnail: screenshot.png
+---
+
+import Layout from "../layouts/Layout.astro";
+
+import Header from "../components/Header.astro";
+import Video from "../components/Video.astro";
+import HighlightedSection from "../components/HighlightedSection.astro";
+import SmallCaps from "../components/SmallCaps.astro";
+import Figure from "../components/Figure.astro";
+import Image from "../components/Image.astro";
+import TwoColumns from "../components/TwoColumns.astro";
+import YouTubeVideo from "../components/YouTubeVideo.astro";
+import LaTeX from "../components/LaTeX.astro";
+
+import soft_bilinear_inverted_pendulum from "../assets/soft_bilinear_inverted_pendulum.webm";
+import block_diag from "../assets/block_diag.svg";
+import kpis from "../assets/kpis.svg";
+import sbip from "../assets/sbip.svg";
+import Splat from "../components/Splat.tsx"
+
+import exp0 from "../assets/exp0.webm";
+import exp10 from "../assets/exp10.webm";
+import anymal_c from "../assets/anymal_c.webm";
+import solo12 from "../assets/solo12.webm";
+import fall from "../assets/fall.webm";
+import nofall from "../assets/nofall.webm";
+
+
+import CodeBlock from "../components/CodeBlock.astro";
+import Table from "../components/Table.astro";
+export const components = {pre: CodeBlock, table: Table}
+
+<Header
+  title={frontmatter.title}
+  authors={[
+    {
+      name: "Davide De Benedittis",
+      url: "https://ddebenedittis.github.io/",
+      institution: "University of Pisa",
+      notes: ["*"],
+    },
+    {
+      name: "Franco Angelini",
+      institution: "University of Pisa",
+    },
+    {
+      name: "Manolo Garabini",
+      institution: "University of Pisa",
+    },
+  ]}
+  conference="IEEE Transactions on Systems, Man, and Cybernetics: Systems"
+  notes={[
+    {
+      symbol: "*",
+      text: "Corresponding author",
+    },
+  ]}
+  links={[
+    {
+      name: "Paper",
+      url: "",
+      icon: "fa-solid:file-pdf",
+    },
+    {
+      name: "Code",
+      url: "https://github.com/ddebenedittis/control_quadrupeds_soft_contacts",
+      icon: "mdi:github",
+    },
+    {
+      name: "arXiv",
+      url: "",
+      icon: "academicons:arxiv",
+    },
+  ]}
+  />
+
+<Video source={soft_bilinear_inverted_pendulum} />
+
+<HighlightedSection>
+
+## Abstract
+
+The robotics research community has developed several effective techniques for quadrupedal locomotion.
+Most of these methods ease the modeling and control problem by assuming a rigid contact between the feet and the terrain.
+However, in the case of compliant terrain or robots equipped with soft feet, this assumption no longer holds, as the contact point moves and the reaction forces experience a delay.
+This paper presents a novel approach for quadrupedal locomotion in the presence of soft contacts.
+The control architecture consists of two blocks: upstream, the Motion Planner (MP) computes a feasible trajectory using Model Predictive Control (MPC); downstream, the Tracking Controller (TC) employs Hierarchical Optimization (HO) to achieve motion tracking.
+This choice allows the control architecture to employ a large time horizon without heavily compromising the model's accuracy.
+For the first time, both blocks consider the contact compliance: in the MP, the classic Linear Inverted Pendulum model is extended by proposing the Soft Bilinear Inverted Pendulum (SBIP) model; conversely, the Tracking Controller (TC) is a Whole-Body Controller (WBC) that considers the full dynamics model, including the soft contacts.
+Simulations with multiple quadrupedal robots demonstrate that the proposed approach enables traversing soft terrains with improved stability and efficiency.
+Furthermore, the performance benefits of including the compliance in the MP and TC are evaluated.
+Finally, experiments on the SOLO12 robot walking on soft terrain validate the proposed approach's effectiveness.
+
+</HighlightedSection>
+
+## Introduction
+
+Legged robots are designed to traverse a wide variety of natural terrains, including soft ground conditions such as snow, mud, and sand.
+However, the majority of the existing control strategies do not account for the softness, leading to reduced efficiency and performance.
+
+This work presents a two-control-blocks architecture composed of a Motion Planner (MP) and a Tracking Controller (TC).
+For the first time, both blocks consider the contact compliance.
+The MP uses the novel Soft Bilinear Inverted Pendulum (SBIP) model to compute a feasible trajectory for the robot.
+The TC employs considers the full robot dynamics and the soft contact model, and computes the optimal joint torques using Hierarchical Optimization (HO).
+The proposed approach is validated through simulations and experiments on multiple quadrupedal robots.
+Additionally, the proposed approach is compared with the state-of-the-art and the effects of including the compliance in the MP and/or TC are evaluated.
+
+<Figure caption="Block diagram of the proposed control architecture.">
+    <Image source={block_diag} altText="Block diagram of the proposed control architecture." />
+</Figure>
+
+## Solution Approach
+
+### Soft Bilinear Inverted Pendulum
+
+The SBIP consists in a LIP that lies on a soft surface, modeled as a linear spring-damper system in the normal direction. The dynamic equations are
+<LaTeX formula="
+\begin{aligned}
+    \ddot{x}_\mathrm{CoM} &= \frac{g + \ddot{z}_\mathrm{CoM}}{h_\mathrm{CoM}} (x_\mathrm{CoM} - 
+    x_\mathrm{ZMP}) \\
+    \ddot{y}_\mathrm{CoM} &= \frac{g + \ddot{z}_\mathrm{CoM}}{h_\mathrm{CoM}} (y_\mathrm{CoM} -
+    y_\mathrm{ZMP}), \\
+    \ddot{z}_\mathrm{CoM} &= - \ddot{\delta} = - g + \frac{1}{m} \left( k_\mathrm{p} \delta + k_\mathrm{d} \dot{\delta} \right),
+\end{aligned}
+" />
+where <LaTeX inline formula="x_\mathrm{CoM}" />, <LaTeX inline formula="y_\mathrm{CoM}" />, and <LaTeX inline formula="z_\mathrm{CoM}" /> are the coordinates of the Center of Mass (CoM) of the robot base, <LaTeX inline formula="x_\mathrm{ZMP}" /> and <LaTeX inline formula="y_\mathrm{ZMP}" /> are the coordinates of the ZMP, <LaTeX inline formula="g" /> is the module of the gravity acceleration, <LaTeX inline formula="m" /> is the total mass of the robot, and <LaTeX inline formula="h_\mathrm{CoM}" /> is the height of the CoM relative to the terrain. Finally, terrain deformation in the SBIP contact point is <LaTeX inline formula="\delta" />, while <LaTeX inline formula="k_\mathrm{p}" /> and <LaTeX inline formula="k_\mathrm{d}" /> are the terrain stiffness and damping, respectively.
+
+<Figure caption="Soft Bilinear Inverted Pendulum model.">
+    <Image source={sbip} altText="Soft Bilinear Inverted Pendulum model." />
+</Figure>
+
+### Motion Planner
+
+The Motion Planner uses Model Predictive Control (MPC) to compute a feasible trajectory for the robot.
+It employs a simplified model (i.e. the SBIP) and optimized over a "large" time horizon.
+
+The MPC computes the optimal ZMP positions along a sliding window.
+The base trajectory is derived from the ZMP positions and the SBIP model dynamics.
+The feet trajectories are computed using a simple heuristic that utilized the ZMP positions.
+
+### Whole-Body Controller
+
+The Whole-Body Controller (WBC) is a Tracking Controller that computes the optimal joint torques to achieve motion tracking.
+It considers the full robot dynamics model over a "short" time horizon.
+A legged robot mush satisfy a wide range of constraints with different importances and potentially conflicting with each other.
+Hierarchical Optimization solves this problem by solving a set of conflicting tasks while respecting an assigned priority order.
+
+The set of tasks and their priorities are
+
+<table>
+  <thead>
+    <tr>
+      <th style="width:20%">Priority</th>
+      <th style="width:80%">Tasks</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>Physical consistency</td>
+    </tr>
+    <tr>
+      <td rowspan="3">2</td>
+      <td>Actuation torque limits</td>
+    </tr>
+    <tr>
+      <td>Contact friction cone limits</td>
+    </tr>
+    <tr>
+      <td>Force modulation</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Contact constraints</td>
+    </tr>
+    <tr>
+      <td rowspan="3">4</td>
+      <td>Base linear trajectory tracking</td>
+    </tr>
+    <tr>
+      <td>Base angular trajectory tracking</td>
+    </tr>
+    <tr>
+      <td>Swing feet trajectory tracking</td>
+    </tr>
+    <tr>
+      <td rowspan="2">5</td>
+      <td>Energy minimization</td>
+    </tr>
+    <tr>
+      <td>Contact forces minimization</td>
+    </tr>
+  </tbody>
+</table>
+
+## Results
+
+### Key Performance Indicators
+
+The heading and lateral Root Mean Square Error (RMSE) are
+<LaTeX formula="\begin{aligned} h_\mathrm{RMSE} &= \sqrt{\frac{\sum_{i=1}^{N}(v_{\mathrm{h}, i} - v_{\mathrm{h}, i}^\mathrm{des})^2}{N}}, \\ l_\mathrm{RMSE} &= \sqrt{\frac{\sum_{i=1}^{N}(v_{\mathrm{l}, i} - v_{\mathrm{l}, i}^\mathrm{des})^2}{N}} \end{aligned}" />
+where <LaTeX inline formula="v_{\mathrm{h}, i}" /> and <LaTeX inline formula="v_{\mathrm{h}, i}^\mathrm{des}" /> are respectively the measured and commanded base velocity in the heading direction at the <LaTeX inline formula="i" />th instant, and similarly for the lateral direction; while <LaTeX inline formula="N" /> is the total number of measurements.
+
+The slippage along a trajectory is computed as the integral of the feet's horizontal movements while in contact with the terrain
+<LaTeX formula="\mathrm{slip} = \sum_{f = 1}^{4} {\sum_{i = 1}^{N} {c_f |v_{f, i}| \Delta t}}" />
+where <LaTeX inline formula="c_f" /> is equal to <LaTeX inline formula="1" /> if the <LaTeX inline formula="f" />th foot is in contact with the terrain, and <LaTeX inline formula="0" /> otherwise; the velocity of the <LaTeX inline formula="f" />th foot at the <LaTeX inline formula="i" />th instant is <LaTeX inline formula="v_{f, i}" />.
+
+The Cost of Transport (CoT) is computed by assuming that most of the energy is lost due to thermal effects and not due to the mechanical work of the actuators. It is computed with
+<LaTeX formula="\mathrm{CoT} = \frac{\sum_{i = 1}^{n} {\vec{v}_{\mathrm{hor}, i} \cdot \vec{v}_i^\mathrm{des} / |\vec{v}_i^\mathrm{des}}|} {\sum_{i = 1}^{n} {\vec{\tau}_i^2}}" />
+where <LaTeX inline formula="\vec{v}_{\mathrm{hor}, i}" /> and <LaTeX inline formula="\vec{v}_i^\mathrm{des}" /> are respectively the horizontal velocity and horizontal reference velocity at the <LaTeX inline formula="i" />th instant.
+
+### Simulations
+
+#### Controller Behavior
+
+<TwoColumns>
+  <Figure slot="left" caption="ANYmal C robot traversing a soft terrain.">
+    <Video source={anymal_c} />
+  </Figure>
+  <Figure slot="right" caption="SOLO12 robot traversing a soft terrain.">
+    <Video source={solo12} />
+  </Figure>
+</TwoColumns>
+
+#### Performance Comparison
+
+<Figure caption="Key Performance Indicators comparison.">
+    <Image source={kpis} altText="Key Performance Indicators comparison." />
+</Figure>
+
+#### Fall Performance Comparison
+
+<TwoColumns>
+  <Figure slot="left" caption="Classic control approach.">
+    <Video source={fall} />
+  </Figure>
+  <Figure slot="right" caption="Proposed control approach.">
+    <Video source={nofall} />
+  </Figure>
+</TwoColumns>
+
+### Experiments
+
+<TwoColumns>
+  <Figure slot="left" caption="Proposed approach traversing a flat soft terrain.">
+    <Video source={exp0} />
+  </Figure>
+  <Figure slot="right" caption="Proposed approach traversing an inclined soft terrain.">
+    <Video source={exp10} />
+  </Figure>
+</TwoColumns>
+
+## Conclusion
+
+This paper presented a novel approach for quadrupedal locomotion in the presence of soft contacts.
+The proposed control architecture consists of two blocks: the Motion Planner (MP) and the Tracking Controller (TC).
+The benefits of including the compliance in the MP and TC were evaluated through simulations and experiments on multiple quadrupedal robots.
+
+## BibTeX citation
+
+```bibtex
+@misc{DeBenedittis2024Soft,
+  author = "{Davide De Benedittis, Franco Angelini, Manolo Garabini}",
+  title = "Soft Bilinear Inverted Pendulum: a Model to Enable Locomotion with Soft Contacts",
+  year = "2024",
+  howpublished = "todo",
+}
+```

@@ -102,9 +102,10 @@ Finally, experiments on the SOLO12 robot walking on soft terrain validate the pr
 ## Introduction
 
 Legged robots are designed to traverse a wide variety of natural terrains, including soft ground conditions such as snow, mud, and sand.
-However, the majority of the existing control strategies do not account for the softness, leading to reduced efficiency and performance.
+However, the majority of existing control strategies do not account for the terrain compliance, leading to reduced efficiency and performance.
 
-This work presents a two-control-blocks architecture composed of a Motion Planner (MP) and a Tracking Controller (TC).
+This work presents a control strategy for legged robots that considers the softness of the terrain.
+It adopts a two-control-blocks architecture composed of a Motion Planner (MP) and a Tracking Controller (TC).
 For the first time, both blocks consider the contact compliance.
 The MP uses the novel Soft Bilinear Inverted Pendulum (SBIP) model to compute a feasible trajectory for the robot.
 The TC employs considers the full robot dynamics and the soft contact model, and computes the optimal joint torques using Hierarchical Optimization (HO).
@@ -114,90 +115,6 @@ Additionally, the proposed approach is compared with the state-of-the-art and th
 <Figure caption="Block diagram of the proposed control architecture.">
     <Image source={block_diag} altText="Block diagram of the proposed control architecture." />
 </Figure>
-
-## Solution Approach
-
-### Soft Bilinear Inverted Pendulum
-
-The SBIP consists in a LIP that lies on a soft surface, modeled as a linear spring-damper system in the normal direction. The dynamic equations are
-<LaTeX formula="
-\begin{aligned}
-    \ddot{x}_\mathrm{CoM} &= \frac{g + \ddot{z}_\mathrm{CoM}}{h_\mathrm{CoM}} (x_\mathrm{CoM} - 
-    x_\mathrm{ZMP}) \\
-    \ddot{y}_\mathrm{CoM} &= \frac{g + \ddot{z}_\mathrm{CoM}}{h_\mathrm{CoM}} (y_\mathrm{CoM} -
-    y_\mathrm{ZMP}), \\
-    \ddot{z}_\mathrm{CoM} &= - \ddot{\delta} = - g + \frac{1}{m} \left( k_\mathrm{p} \delta + k_\mathrm{d} \dot{\delta} \right),
-\end{aligned}
-" />
-where <LaTeX inline formula="x_\mathrm{CoM}" />, <LaTeX inline formula="y_\mathrm{CoM}" />, and <LaTeX inline formula="z_\mathrm{CoM}" /> are the coordinates of the Center of Mass (CoM) of the robot base, <LaTeX inline formula="x_\mathrm{ZMP}" /> and <LaTeX inline formula="y_\mathrm{ZMP}" /> are the coordinates of the ZMP, <LaTeX inline formula="g" /> is the module of the gravity acceleration, <LaTeX inline formula="m" /> is the total mass of the robot, and <LaTeX inline formula="h_\mathrm{CoM}" /> is the height of the CoM relative to the terrain. Finally, terrain deformation in the SBIP contact point is <LaTeX inline formula="\delta" />, while <LaTeX inline formula="k_\mathrm{p}" /> and <LaTeX inline formula="k_\mathrm{d}" /> are the terrain stiffness and damping, respectively.
-
-<Figure caption="Soft Bilinear Inverted Pendulum model.">
-    <Image source={sbip} altText="Soft Bilinear Inverted Pendulum model." />
-</Figure>
-
-### Motion Planner
-
-The Motion Planner uses Model Predictive Control (MPC) to compute a feasible trajectory for the robot.
-It employs a simplified model (i.e. the SBIP) and optimized over a "large" time horizon.
-
-The MPC computes the optimal ZMP positions along a sliding window.
-The base trajectory is derived from the ZMP positions and the SBIP model dynamics.
-The feet trajectories are computed using a simple heuristic that utilized the ZMP positions.
-
-### Whole-Body Controller
-
-The Whole-Body Controller (WBC) is a Tracking Controller that computes the optimal joint torques to achieve motion tracking.
-It considers the full robot dynamics model over a "short" time horizon.
-A legged robot mush satisfy a wide range of constraints with different importances and potentially conflicting with each other.
-Hierarchical Optimization solves this problem by solving a set of conflicting tasks while respecting an assigned priority order.
-
-The set of tasks and their priorities are
-
-<table>
-  <thead>
-    <tr>
-      <th style="width:20%">Priority</th>
-      <th style="width:80%">Tasks</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>1</td>
-      <td>Physical consistency</td>
-    </tr>
-    <tr>
-      <td rowspan="3">2</td>
-      <td>Actuation torque limits</td>
-    </tr>
-    <tr>
-      <td>Contact friction cone limits</td>
-    </tr>
-    <tr>
-      <td>Force modulation</td>
-    </tr>
-    <tr>
-      <td>3</td>
-      <td>Contact constraints</td>
-    </tr>
-    <tr>
-      <td rowspan="3">4</td>
-      <td>Base linear trajectory tracking</td>
-    </tr>
-    <tr>
-      <td>Base angular trajectory tracking</td>
-    </tr>
-    <tr>
-      <td>Swing feet trajectory tracking</td>
-    </tr>
-    <tr>
-      <td rowspan="2">5</td>
-      <td>Energy minimization</td>
-    </tr>
-    <tr>
-      <td>Contact forces minimization</td>
-    </tr>
-  </tbody>
-</table>
 
 ## Results
 
@@ -256,6 +173,103 @@ where <LaTeX inline formula="\vec{v}_{\mathrm{hor}, i}" /> and <LaTeX inline for
   </Figure>
 </TwoColumns>
 
+## Solution Approach
+
+### Full Dynamics Model
+
+The full dynamics model of a legged robot is
+<LaTeX formula="
+    {M}({q})\dot{{v}} + {h}({q}, {v}) = {S}^T {\tau} + {J}^T_\mathrm{c}({q}) {f}_\mathrm{c}" />
+where <LaTeX inline formula="{q}" /> is the generalized coordinates vector, <LaTeX inline formula="{v}" /> is the generalized velocity vector, <LaTeX inline formula="{M}({q})" /> is the mass matrix, <LaTeX inline formula="{h}({q}, {v})" /> is the vector of Coriolis and centrifugal forces, <LaTeX inline formula="{S}" /> is the selection matrix, <LaTeX inline formula="{\tau}" /> is the joint torques vector, <LaTeX inline formula="{J}_\mathrm{c}({q})" /> is the contact Jacobian matrix, and <LaTeX inline formula="{f}_\mathrm{c}" /> is the contact forces vector.
+
+### Soft Bilinear Inverted Pendulum
+
+The SBIP consists in a LIP that lies on a soft surface, modeled as a linear spring-damper system in the normal direction. The dynamic equations are
+<LaTeX formula="
+\begin{aligned}
+    \ddot{x}_\mathrm{CoM} &= \frac{g + \ddot{z}_\mathrm{CoM}}{h_\mathrm{CoM}} (x_\mathrm{CoM} - 
+    x_\mathrm{ZMP}) \\
+    \ddot{y}_\mathrm{CoM} &= \frac{g + \ddot{z}_\mathrm{CoM}}{h_\mathrm{CoM}} (y_\mathrm{CoM} -
+    y_\mathrm{ZMP}), \\
+    \ddot{z}_\mathrm{CoM} &= - \ddot{\delta} = - g + \frac{1}{m} \left( k_\mathrm{p} \delta + k_\mathrm{d} \dot{\delta} \right),
+\end{aligned}
+" />
+where <LaTeX inline formula="x_\mathrm{CoM}" />, <LaTeX inline formula="y_\mathrm{CoM}" />, and <LaTeX inline formula="z_\mathrm{CoM}" /> are the coordinates of the Center of Mass (CoM) of the robot base, <LaTeX inline formula="x_\mathrm{ZMP}" /> and <LaTeX inline formula="y_\mathrm{ZMP}" /> are the coordinates of the ZMP, <LaTeX inline formula="g" /> is the module of the gravity acceleration, <LaTeX inline formula="m" /> is the total mass of the robot, and <LaTeX inline formula="h_\mathrm{CoM}" /> is the height of the CoM relative to the terrain. Finally, terrain deformation in the SBIP contact point is <LaTeX inline formula="\delta" />, while <LaTeX inline formula="k_\mathrm{p}" /> and <LaTeX inline formula="k_\mathrm{d}" /> are the terrain stiffness and damping, respectively.
+
+<Figure caption="Soft Bilinear Inverted Pendulum model.">
+    <Image source={sbip} altText="Soft Bilinear Inverted Pendulum model." />
+</Figure>
+
+### Motion Planner
+
+The Motion Planner uses Model Predictive Control (MPC) to compute a feasible trajectory for the robot.
+It employs a simplified model (i.e. the SBIP) and optimized over a "large" time horizon.
+
+The MPC computes the optimal ZMP positions along a sliding window.
+The base trajectory is derived from the ZMP positions and the SBIP model dynamics.
+The feet trajectories are computed using a simple heuristic that utilized the ZMP positions.
+
+### Whole-Body Controller
+
+The Whole-Body Controller (WBC) is a Tracking Controller that computes the optimal joint torques to achieve motion tracking.
+It considers the full robot dynamics model over a "short" time horizon.
+
+A legged robot mush satisfy a wide range of constraints with different importances and potentially conflicting with each other.
+Hierarchical Optimization solves this problem by solving a set of conflicting tasks while respecting an assigned priority order.
+
+The set of tasks and their priorities are
+
+<table>
+  <thead>
+    <tr>
+      <th style="width:20%">Priority</th>
+      <th style="width:80%">Tasks</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom: 1px solid #aaa;">
+      <td>1</td>
+      <td>Physical consistency</td>
+    </tr>
+    <tr>
+      <td rowspan="3">2</td>
+      <td>Actuation torque limits</td>
+    </tr>
+    <tr>
+      <td>Contact friction cone limits</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #aaa;">
+      <td>Force modulation</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #aaa;">
+      <td>3</td>
+      <td>Contact constraints</td>
+    </tr>
+    <tr>
+      <td rowspan="3">4</td>
+      <td>Base linear trajectory tracking</td>
+    </tr>
+    <tr>
+      <td>Base angular trajectory tracking</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #aaa;">
+      <td>Swing feet trajectory tracking</td>
+    </tr>
+    <tr>
+      <td rowspan="2">5</td>
+      <td>Energy minimization</td>
+    </tr>
+    <tr>
+      <td>Contact forces minimization</td>
+    </tr>
+  </tbody>
+</table>
+
+Each task is formulated as a set of linear equality and inequality constraints, as follows
+<LaTeX formula="\left\lbrace \begin{aligned} A_p x - b_p &= s_{\mathrm{e}, p}, \\ C_p x - d_p &\leq s_{\mathrm{i}, p}. \end{aligned} \right." />
+Here, <LaTeX inline formula="x = \begin{bmatrix} \dot{v}^T & f_c^T & \delta_d^T \end{bmatrix}^T" /> is the optimization vector, where <LaTeX inline formula="\dot{v}" /> is the generalized velocity vector, <LaTeX inline formula="f_c" /> are the contact forces, and <LaTeX inline formula="\delta_d" /> are the desired terrain deformations.
+Conversely, <LaTeX inline formula="s_{\mathrm{e}, p}" /> and <LaTeX inline formula="s_{\mathrm{i}, p}" /> are the equality and inequality slack variables, respectively.
+
 ## Conclusion
 
 This paper presented a novel approach for quadrupedal locomotion in the presence of soft contacts.
@@ -265,10 +279,11 @@ The benefits of including the compliance in the MP and TC were evaluated through
 ## BibTeX citation
 
 ```bibtex
-@misc{DeBenedittis2024Soft,
-  author = "{Davide De Benedittis, Franco Angelini, Manolo Garabini}",
-  title = "Soft Bilinear Inverted Pendulum: a Model to Enable Locomotion with Soft Contacts",
-  year = "2024",
-  howpublished = "todo",
+@article{DeBenedittis2024Soft,
+  author = {De Benedittis, Davide and Angelini, Franco and Garabini, Manolo},
+  title = {Soft Bilinear Inverted Pendulum: a Model to Enable Locomotion with Soft Contacts},
+  journal = {IEEE Transactions on Systems, Man, and Cybernetics: Systems},
+  year = {2024},
+  publisher = {IEEE}
 }
 ```

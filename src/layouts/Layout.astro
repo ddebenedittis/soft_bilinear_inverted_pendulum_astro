@@ -43,21 +43,21 @@ const prefix = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
 
     <title>{title}</title>
     <!-- Google Analytics (GA4) — production only, same property as the personal
-         site, so traffic across ddebenedittis.github.io reports as one journey. -->
+         site, so traffic across ddebenedittis.github.io reports as one journey.
+         The bootstrap sits in the script body, not set:html, which HTML-escapes
+         the quotes and leaves &#39; inside a raw-text element. -->
     {
       import.meta.env.PROD && (
         <>
           <link rel="preconnect" href="https://www.googletagmanager.com" />
           <link rel="dns-prefetch" href="https://www.google-analytics.com" />
-          <script
-            is:inline
-            async
-            src="https://www.googletagmanager.com/gtag/js?id=G-QPLZ0NL31V"
-          />
-          <script
-            is:inline
-            set:html="window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-QPLZ0NL31V');"
-          />
+          <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-QPLZ0NL31V" />
+          <script is:inline>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-QPLZ0NL31V');
+          </script>
         </>
       )
     }

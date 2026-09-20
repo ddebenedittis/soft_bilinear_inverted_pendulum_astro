@@ -42,6 +42,25 @@ const prefix = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
     />
 
     <title>{title}</title>
+    <!-- Google Analytics (GA4) — production only, same property as the personal
+         site, so traffic across ddebenedittis.github.io reports as one journey. -->
+    {
+      import.meta.env.PROD && (
+        <>
+          <link rel="preconnect" href="https://www.googletagmanager.com" />
+          <link rel="dns-prefetch" href="https://www.google-analytics.com" />
+          <script
+            is:inline
+            async
+            src="https://www.googletagmanager.com/gtag/js?id=G-QPLZ0NL31V"
+          />
+          <script
+            is:inline
+            set:html="window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-QPLZ0NL31V');"
+          />
+        </>
+      )
+    }
   </head>
   <body
     class="flex flex-col gap-4 items-center pt-12 pb-6 w-full *:px-6 *:max-w-[60rem]"
